@@ -26,11 +26,9 @@ spring:
 #    properties:
 #      hibernate:
 #        format_sql: true
-#    defer-datasource-initialization: true
-  sql:
-    init:
-      data-locations: classpath*:db/h2/data.sql
-
+#  sql:
+#    init:
+#      data-locations: classpath*:db/h2/data.sql
   security:
     oauth2:
       client:
