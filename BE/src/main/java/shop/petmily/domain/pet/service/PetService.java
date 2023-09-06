@@ -87,7 +87,7 @@ public class PetService {
         return pet;
     }
 
-    private void verifiedPetOwner(long originMemberId, Long requestMemberId) {
-        if (originMemberId != requestMemberId) throw new BusinessLogicException(ExceptionCode.NOT_ALLOW_MEMBER);
+    public void verifiedPetOwner(long originMemberId, Long requestMemberId) {
+        if (originMemberId != requestMemberId) throw new BusinessLogicException(ExceptionCode.NOT_MY_PET);
     }
 }

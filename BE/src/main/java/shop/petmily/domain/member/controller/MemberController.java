@@ -1,6 +1,7 @@
 package shop.petmily.domain.member.controller;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -93,8 +94,8 @@ public class MemberController {
     public ResponseEntity<PetsitterPossibleResoponseDto> getPetsitterPossible(@LoginMemberId Long loginMemberId) {
         Member findMember = memberService.findMember(loginMemberId);
         Petsitter findPetsitter = petsitterService.findPetsitter(findMember);
-        findPetsitter.setStar(memberService.averageStar(findMember));
-        petsitterService.addPetsitterProfile(findPetsitter);
+//        findPetsitter.setStar(memberService.averageStar(findMember));
+//        petsitterService.addPetsitterProfile(findPetsitter);
         PetsitterPossibleResoponseDto petsitterPossibleResoponseDto = petsitterService.findPossible(findPetsitter);
         return new ResponseEntity<>(petsitterPossibleResoponseDto, HttpStatus.OK);
     }

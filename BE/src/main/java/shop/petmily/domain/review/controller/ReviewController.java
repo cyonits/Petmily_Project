@@ -8,13 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import shop.petmily.domain.member.entity.Member;
+import shop.petmily.domain.member.entity.Petsitter;
 import shop.petmily.domain.member.service.MemberService;
+import shop.petmily.domain.member.service.PetsitterService;
 import shop.petmily.domain.review.Dto.*;
 import shop.petmily.domain.review.entity.Review;
 import shop.petmily.domain.review.mapper.ReviewMapper;
 import shop.petmily.domain.review.service.ReviewService;
 import shop.petmily.global.argu.LoginMemberId;
-import shop.petmily.global.security.utils.JwtUtils;
 
 import javax.validation.constraints.Positive;
 import java.io.IOException;
@@ -27,15 +29,17 @@ import java.util.stream.Collectors;
 @RequestMapping("/reviews")
 public class ReviewController {
     private final ReviewMapper mapper;
-    private final MemberService memberService;
     private final ReviewService service;
-    private final JwtUtils jwtUtils;
 
-    public ReviewController(ReviewMapper mapper, MemberService memberService, ReviewService service, JwtUtils jwtUtils) {
+    private final MemberService memberService;
+
+    private final PetsitterService petsitterService;
+
+    public ReviewController(ReviewMapper mapper, ReviewService service, MemberService memberService, PetsitterService petsitterService) {
         this.mapper = mapper;
-        this.memberService = memberService;
         this.service = service;
-        this.jwtUtils = jwtUtils;
+        this.memberService = memberService;
+        this.petsitterService = petsitterService;
     }
 
     // 후기 등록
@@ -46,6 +50,10 @@ public class ReviewController {
         reviewPostDto.setMemberId(memberId);
         Review createdReview = service.createReview(mapper.reviewPostToReview(reviewPostDto), files);
         ReviewResponseDto response = mapper.reviewToResponse(createdReview);
+
+        Petsitter findPetsitter = createdReview.getPetsitter();
+        findPetsitter.setStar(service.averageStar(findPetsitter));
+        petsitterService.addPetsitterProfile(findPetsitter);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -61,6 +69,10 @@ public class ReviewController {
         Review review = mapper.reviewPatchToReview(reviewPatchDto);
         Review updatedReview = service.updateReview(review, files);
         ReviewResponseDto response = mapper.reviewToResponse(updatedReview);
+
+        Petsitter findPetsitter = updatedReview.getPetsitter();
+        findPetsitter.setStar(service.averageStar(findPetsitter));
+        petsitterService.addPetsitterProfile(findPetsitter);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
