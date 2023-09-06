@@ -1,8 +1,9 @@
 package shop.petmily.domain.pet.service;
 
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import shop.petmily.domain.member.entity.Member;
+import shop.petmily.domain.member.service.MemberService;
 import shop.petmily.domain.pet.entity.Pet;
 import shop.petmily.domain.pet.repository.PetRepository;
 import shop.petmily.global.AWS.service.S3UploadService;
@@ -10,8 +11,6 @@ import shop.petmily.global.exception.BusinessLogicException;
 import shop.petmily.global.exception.ExceptionCode;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,11 +18,14 @@ import java.util.Optional;
 public class PetService {
     private final PetRepository repository;
     private final S3UploadService uploadService;
+    private final MemberService memberService;
 
-    public PetService(PetRepository repository, S3UploadService uploadService)
-    {
+    public PetService(PetRepository repository,
+                      S3UploadService uploadService,
+                      MemberService memberService){
         this.repository = repository;
         this.uploadService = uploadService;
+        this.memberService = memberService;
     }
 
     public Pet createPet(Pet pet, MultipartFile file) throws IOException {
@@ -66,6 +68,11 @@ public class PetService {
     public Pet findPet(long petId){
         Pet verifiedPet = verifiedPet(petId);
         return  verifiedPet;
+    }
+
+    public List<Pet> findPets(Long memberId){
+        Member member = memberService.findMember(memberId);
+        return  repository.findByMember(member);
     }
 
     public void deletePet(long petId, Long requestMemberId){

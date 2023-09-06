@@ -4,11 +4,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import shop.petmily.domain.member.entity.Member;
 import shop.petmily.domain.member.entity.Petsitter;
-import shop.petmily.domain.member.repository.MemberRepository;
 import shop.petmily.domain.member.repository.PetsitterRepository;
 import shop.petmily.domain.member.service.MemberService;
 import shop.petmily.domain.member.service.PetsitterService;
@@ -23,10 +21,11 @@ import shop.petmily.global.exception.BusinessLogicException;
 import shop.petmily.global.exception.ExceptionCode;
 
 import java.sql.Date;
-import java.sql.Timestamp;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.TextStyle;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -36,7 +35,6 @@ import java.util.regex.Pattern;
 @Service
 public class ReservationService {
     private final ReservationRepository reservationRepository;
-    private final MemberRepository memberRepository;
     private final MemberService memberService;
     private final PetsitterRepository petsitterRepository;
     private final ReservationPetRepository reservationPetRepository;
@@ -44,14 +42,12 @@ public class ReservationService {
     private final PetsitterService petsitterService;
 
     public ReservationService(ReservationRepository reservationRepository,
-                              MemberRepository memberRepository,
                               MemberService memberService,
                               PetsitterRepository petsitterRepository,
                               ReservationPetRepository reservationPetRepository,
                               PetService petService,
                               PetsitterService petsitterService) {
         this.reservationRepository = reservationRepository;
-        this.memberRepository = memberRepository;
         this.memberService = memberService;
         this.petsitterRepository = petsitterRepository;
         this.reservationPetRepository = reservationPetRepository;
@@ -70,12 +66,12 @@ public class ReservationService {
             throw new BusinessLogicException(ExceptionCode.TIME_REQUEST_NOT_ALLOWED);
         }
 
-        String reservationPetType = verifiedReservationPetType(reservation);
+        Petsitter.PossiblePetType reservationPetType = verifiedReservationPetType(reservation);
         String reservationLocation = extractionAddress(reservation.getAdress());
         Date reservationDate = reservation.getReservationDay();
 
         List<Petsitter> petsitters = petsitterRepository.findPossiblePetsitter(reservationDay, reservationPetType, reservationLocation,
-                reservationStartTime, reservationEndTime, reservationDate);
+                reservation.getReservationTimeStart(), reservation.getReservationTimeEnd(), reservationDate);
 
         return petsitters;
     }
@@ -102,23 +98,50 @@ public class ReservationService {
         Reservation reservation = findVerifiedReservation(reservationId);
 
         reservation.setReservationPets(
-                reservationPetRepository.findByReservation_ReservationId(reservation.getReservationId()));
+                reservationPetRepository.findByReservation(reservation));
 
         return reservation;
     }
 
-    public Page<Reservation> findMemberReservations(int page, int size, Long id) {
+    public Page<Reservation> findMemberReservations(int page, int size, Long id, String condition) {
+        Member member = memberService.findMember(id);
+
         PageRequest pageRequest = PageRequest.of(page-1, size, Sort.Direction.DESC,("reservationId"));
-        Page<Reservation> reservations = reservationRepository.findByMember_MemberId(id, pageRequest);
-        return reservations;
+        List<Progress> progressList = Arrays.asList(Progress.RESERVATION_CANCELLED, Progress.FINISH_CARING);
+        if(condition == null){
+            Page<Reservation> reservations = reservationRepository.findByMember(member, pageRequest);
+            return reservations;
+        } else if (condition.equals("expected")) {
+            Page<Reservation> expectedReservations = reservationRepository.findByMemberAndProgressNotIn(member, progressList, pageRequest);
+            return expectedReservations;
+        } else if (condition.equals("finish")) {
+            Page<Reservation> finishReservations = reservationRepository.findByMemberAndProgressIn(member, progressList, pageRequest);
+            return finishReservations;
+        } else {
+            Page<Reservation> reservations = reservationRepository.findByMember(member, pageRequest);
+            return reservations;
+        }
     }
 
-    public Page<Reservation> findPetsitterReservations(int page, int size, Long id) {
-        Long petsitterId = memberService.findMember(id).getPetsitter().getPetsitterId();
+    public Page<Reservation> findPetsitterReservations(int page, int size, Long id, String condition) {
+        Petsitter petsitter= memberService.findMember(id).getPetsitter();
 
         PageRequest pageRequest = PageRequest.of(page-1, size, Sort.Direction.DESC,("reservationId"));
-        Page<Reservation> reservations = reservationRepository.findByPetsitter_PetsitterId(petsitterId, pageRequest);
-        return reservations;
+        List<Progress> progressList = Arrays.asList(Progress.RESERVATION_CANCELLED, Progress.FINISH_CARING);
+
+        if(condition == null) {
+            Page<Reservation> reservations = reservationRepository.findByPetsitter(petsitter, pageRequest);
+            return reservations;
+        } else if (condition.equals("expected")) {
+            Page<Reservation> expectedReservations = reservationRepository.findByPetsitterAndProgressNotIn(petsitter, progressList, pageRequest);
+            return expectedReservations;
+        } else if (condition.equals("finish")) {
+            Page<Reservation> finishReservations = reservationRepository.findByPetsitterAndProgressIn(petsitter, progressList, pageRequest);
+            return finishReservations;
+        } else {
+            Page<Reservation> reservations = reservationRepository.findByPetsitter(petsitter, pageRequest);
+            return reservations;
+        }
     }
 
 //     예약 확정 (펫시터)
@@ -198,7 +221,7 @@ public class ReservationService {
         for (Reservation reservation : reservations) {
             LocalTime reservationEndTime = reservation.getReservationTimeEnd().toLocalTime();
 
-            if (reservationEndTime.isBefore(now.toLocalTime())) {
+            if (reservationEndTime.isBefore(now.toLocalTime()) && reservation.getProgress() != Progress.RESERVATION_CANCELLED) {
                 reservation.setProgress(Progress.FINISH_CARING);
                 reservationRepository.save(reservation);
             }
@@ -206,10 +229,10 @@ public class ReservationService {
     }
 
 
-    public String verifiedReservationPetType(Reservation reservation){
+    public Petsitter.PossiblePetType verifiedReservationPetType(Reservation reservation){
         boolean hasCat = false;
         boolean hasDog = false;
-        String reservationPetType = "";
+        Petsitter.PossiblePetType reservationPetType = null;
 
         for (ReservationPet reservationPet :reservation.getReservationPets()) {
             Long petId = (Long) reservationPet.getPet().getPetId();
@@ -221,11 +244,11 @@ public class ReservationService {
         }
 
         if (hasCat && hasDog) {
-            reservationPetType = String.valueOf(Petsitter.PossiblePetType.PET_ALL);
+            reservationPetType = Petsitter.PossiblePetType.PET_ALL;
         } else if (hasCat) {
-            reservationPetType = String.valueOf(Petsitter.PossiblePetType.PET_CAT);
+            reservationPetType = Petsitter.PossiblePetType.PET_CAT;
         } else if (hasDog) {
-            reservationPetType = String.valueOf(Petsitter.PossiblePetType.PET_DOG);
+            reservationPetType = Petsitter.PossiblePetType.PET_DOG;
         }
 
         return reservationPetType;
@@ -233,14 +256,14 @@ public class ReservationService {
     }
 
     public String extractionAddress(String originAdress){
-        Pattern pattern = Pattern.compile("(서울|대전|대구|울산|부산|광주|세종특별자치시)\\s([가-힣]+[구])?|([가-힣]+[시군])\\s([가-힣]+[구])?");
+        Pattern pattern = Pattern.compile("(서울|대전|대구|울산|부산|광주|세종특별자치시)\\s([가-힣]+[구군])?|([가-힣]+[시군])\\s([가-힣]+[구])?");
         Matcher matcher = pattern.matcher(originAdress);
 
         if (matcher.find()) {
-            return matcher.group();
+            return matcher.group().trim();
         }
 
-        throw new RuntimeException();
+        throw new BusinessLogicException(ExceptionCode.NOT_ALLOW_ADDRESS);
     }
 
     // 예약 내용 수정
