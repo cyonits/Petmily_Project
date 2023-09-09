@@ -29,7 +29,7 @@ public class Reservation extends Auditable {
     private String phone;
 
     @Column(length = 100, nullable = false)
-    private String adress;
+    private String address;
 
     @Column(nullable = false)
     private LocalDate reservationDay;
@@ -42,8 +42,6 @@ public class Reservation extends Auditable {
 
     @OneToMany(mappedBy = "reservation", cascade = CascadeType.PERSIST)
     private List<ReservationPet> ReservationPets = new ArrayList<>();
-
-    public void addReservationPets(ReservationPet reservationPet) {ReservationPets.add(reservationPet);}
 
     @Enumerated(EnumType.STRING)
     private Progress progress;
