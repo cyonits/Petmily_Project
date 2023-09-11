@@ -1,19 +1,18 @@
 package shop.petmily.domain.reservation.mapper;
 
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import shop.petmily.domain.member.entity.Member;
 import shop.petmily.domain.member.entity.Petsitter;
 import shop.petmily.domain.pet.dto.PetResponseDto;
 import shop.petmily.domain.pet.entity.Pet;
-import shop.petmily.domain.reservation.dto.*;
+import shop.petmily.domain.reservation.dto.ReservationPossiblePetsitterReseponseDto;
+import shop.petmily.domain.reservation.dto.ReservationPostDto;
+import shop.petmily.domain.reservation.dto.ReservationResponseDto;
 import shop.petmily.domain.reservation.entity.Reservation;
 import shop.petmily.domain.reservation.entity.ReservationPet;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 @Mapper(componentModel = "Spring")
 public interface ReservationMapper {
@@ -49,19 +48,13 @@ public interface ReservationMapper {
         return reservation;
     }
 
-//    @Mapping(source = "memberId", target = "member.memberId")
-//    @Mapping(source = "petsitterId", target = "petsitter.petsitterId")
-//    Reservation reservationCreateDtoToRservation(ReservationCreateDto reservationCreateDto);
-
-//    @Mapping(source = "memberId", target = "member.memberId")
-//    Reservation reservationPatchDtoToReservation(ReservationPatchDto reservationPatchDto);
-
     default ReservationResponseDto reservationToReservationResponseDto(Reservation reservation){
         ReservationResponseDto reservationResponseDto = new ReservationResponseDto();
 
         reservationResponseDto.setReservationId(reservation.getReservationId());
         reservationResponseDto.setMemberId(reservation.getMember().getMemberId());
         reservationResponseDto.setName(reservation.getMember().getName());
+        reservationResponseDto.setNickName(reservation.getMember().getNickName());
         reservationResponseDto.setPhoto(reservation.getMember().getPhoto());
         reservationResponseDto.setBody(reservation.getMember().getBody());
         reservationResponseDto.setReservationDay(reservation.getReservationDay());
@@ -77,12 +70,14 @@ public interface ReservationMapper {
             reservationResponseDto.setPetsitterPhone(null);
             reservationResponseDto.setPetsitterBody(null);
             reservationResponseDto.setPetsitterPhoto(null);
+            reservationResponseDto.setNickName(null);
         }else {
             reservationResponseDto.setPetsitterId(reservation.getPetsitter().getPetsitterId());
             reservationResponseDto.setPetsitterName(reservation.getPetsitter().getMember().getName());
             reservationResponseDto.setPetsitterPhone(reservation.getPetsitter().getMember().getPhone());
             reservationResponseDto.setPetsitterBody(reservation.getPetsitter().getMember().getBody());
             reservationResponseDto.setPetsitterPhoto(reservation.getPetsitter().getMember().getPhoto());
+            reservationResponseDto.setPetsitterNickName(reservation.getPetsitter().getMember().getNickName());
         }
         reservationResponseDto.setCreatedAt(reservation.getCreatedAt());
         reservationResponseDto.setLastModifiedAt(reservation.getLastModifiedAt());
@@ -131,4 +126,11 @@ public interface ReservationMapper {
         reseponseDto.setReviewCount(petsitter.getReviewCount());
         return reseponseDto;
     }
+
+    //    @Mapping(source = "memberId", target = "member.memberId")
+//    @Mapping(source = "petsitterId", target = "petsitter.petsitterId")
+//    Reservation reservationCreateDtoToRservation(ReservationCreateDto reservationCreateDto);
+
+    //    @Mapping(source = "memberId", target = "member.memberId")
+//    Reservation reservationPatchDtoToReservation(ReservationPatchDto reservationPatchDto);
 }

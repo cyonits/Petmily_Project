@@ -8,11 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import shop.petmily.domain.member.dto.*;
 import shop.petmily.domain.member.entity.Member;
 import shop.petmily.domain.member.entity.Petsitter;
@@ -21,7 +19,6 @@ import shop.petmily.domain.member.mapper.PetsitterMapper;
 import shop.petmily.domain.member.service.MemberService;
 import shop.petmily.domain.member.service.PetsitterService;
 import shop.petmily.global.argu.LoginMemberId;
-import shop.petmily.global.dto.LoginMemberResponseDto;
 import shop.petmily.global.dto.PageResponseDto;
 import shop.petmily.global.dto.SingleResponseDto;
 import shop.petmily.global.utils.UriCreator;
@@ -55,20 +52,19 @@ public class MemberController {
     @PatchMapping(value = "/{member-id}")
     public ResponseEntity patchMember(@PathVariable("member-id") @Positive long memberId,
                                       @LoginMemberId Long loginMemberId,
-                                      @Valid @ModelAttribute MemberPatchRequestDto requestBody,
-                                      @RequestPart(required = false) MultipartFile file) throws IOException {
+                                      @Valid @ModelAttribute MemberPatchRequestDto requestBody) throws IOException {
         Member findMember = memberService.findMember(memberId);
         memberService.verifyAuthority(findMember, loginMemberId);
 
         requestBody.setMemberId(findMember.getMemberId());
 
-        memberService.updateMember(memberMapper.memberPatchDtoToMember(requestBody), file);
+        memberService.updateMember(memberMapper.memberPatchDtoToMember(requestBody), requestBody.getFile());
 
         return new ResponseEntity<>(new SingleResponseDto<>("success modify member"), HttpStatus.OK);
     }
 
     @PatchMapping("/{member-id}/photo")
-    public ResponseEntity photoDeletePet(@PathVariable ("member-id") @Positive long memberId,
+    public ResponseEntity photoDeleteMember(@PathVariable ("member-id") @Positive long memberId,
                                          @LoginMemberId Long loginMemberId) throws IOException {
         Member findMember = memberService.findMember(memberId);
         memberService.verifyAuthority(findMember, loginMemberId);
@@ -123,11 +119,19 @@ public class MemberController {
         return new ResponseEntity<>(new SingleResponseDto<>("success delete member"), HttpStatus.OK);
     }
 
-    @ResponseStatus(value = HttpStatus.OK)
-    @GetMapping("/user")
-    public ResponseEntity accountUserDetails(@LoginMemberId Long loginMemberId) {
-        Member findMember = memberService.findMember(loginMemberId);
-
-        return new ResponseEntity<>(new LoginMemberResponseDto(memberMapper.memberToLoginMemberResponseDto(findMember)), HttpStatus.OK);
+    // 찜 기능
+    @PostMapping("/favorite")
+    public ResponseEntity favoritePetsitter(@LoginMemberId Long memberId,
+                                            @RequestParam Long petsitterId) {
+        memberService.toggleFavorite(memberId, petsitterId);
+        return new ResponseEntity<>(new SingleResponseDto<>("해당 펫시터가 찜 선택(취소) 되었습니다"), HttpStatus.OK);
     }
+
+//    @ResponseStatus(value = HttpStatus.OK)
+//    @GetMapping("/user")
+//    public ResponseEntity accountUserDetails(@LoginMemberId Long loginMemberId) {
+//        Member findMember = memberService.findMember(loginMemberId);
+//
+//        return new ResponseEntity<>(new LoginMemberResponseDto(memberMapper.memberToLoginMemberResponseDto(findMember)), HttpStatus.OK);
+//    }
 }
