@@ -3,8 +3,10 @@ package shop.petmily.domain.refreshToken.contorller;
 import org.springframework.transaction.annotation.Transactional;
 import shop.petmily.domain.member.dto.MemberLoginDto;
 import shop.petmily.domain.member.entity.Member;
+import shop.petmily.domain.member.entity.Petsitter;
 import shop.petmily.domain.member.repository.MemberRepository;
 import shop.petmily.domain.member.service.MemberService;
+import shop.petmily.domain.member.service.PetsitterService;
 import shop.petmily.domain.refreshToken.service.RefreshTokenService;
 import shop.petmily.global.exception.BusinessLogicException;
 import shop.petmily.global.exception.ExceptionCode;
@@ -31,19 +33,23 @@ public class RefreshTokenController {
 
     private final JwtTokenizer jwtTokenizer;
     private final MemberService memberService;
+    private final PetsitterService petsitterService;
     private final RefreshTokenService refreshTokenService;
     private final CustomAuthorityUtils customAuthorityUtils;
 
 
     @ResponseStatus(value = HttpStatus.OK)
     @PostMapping("/petsitterToken") // member에서 petsitter로 토큰 변경
-    public ResponseEntity requestPetsitterToken(@RequestHeader("Refresh") String requestHeader) {
+    public ResponseEntity<MemberLoginDto.LoginResponse> requestPetsitterToken(@RequestHeader("Refresh") String requestHeader) {
         refreshTokenService.findRefreshToken(requestHeader).orElseThrow(() -> new BusinessLogicException(ExceptionCode.INVALID_TOKEN));
 
         Claims refreshClaims = jwtTokenizer.parseRefreshToken(requestHeader);
         Member member = memberService.findMember(refreshClaims.get("sub").toString());
         member.setRoles(customAuthorityUtils.chageRoles(member));
         member.setPetsitterBoolean(true);
+
+        Petsitter petsitter = new Petsitter(member);
+        petsitterService.addPetsitterProfile(petsitter);
 
         memberService.updatePetsitterBoolean(member);
 
@@ -72,7 +78,7 @@ public class RefreshTokenController {
 
     @ResponseStatus(value = HttpStatus.OK)
     @PostMapping // refreshToken으로 accessToken 재발급
-    public ResponseEntity requestRefresh(@RequestHeader("Refresh") String requestHeader) {
+    public ResponseEntity<MemberLoginDto.LoginResponse> requestRefresh(@RequestHeader("Refresh") String requestHeader) {
         refreshTokenService.findRefreshToken(requestHeader).orElseThrow(() -> new BusinessLogicException(ExceptionCode.NOT_FOUND_TOKEN));
 
         Claims refreshClaims = jwtTokenizer.parseRefreshToken(requestHeader);
@@ -81,7 +87,6 @@ public class RefreshTokenController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", member.getEmail());
         claims.put("roles", member.getRoles());
-//        claims.put("nickName", member.getNickName());
         claims.put("id", member.getMemberId());
 
         String subject = member.getEmail();
@@ -97,7 +102,6 @@ public class RefreshTokenController {
                 .accessToken(accessToken)
                 .refreshToken(requestHeader)
                 .memberId(member.getMemberId())
-//                .nickName(member.getNickName())
                 .build();
 
         return ResponseEntity.ok().headers(headers).body(loginResponse);
