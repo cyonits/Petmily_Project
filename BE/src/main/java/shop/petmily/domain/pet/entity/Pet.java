@@ -33,7 +33,7 @@ public class Pet extends Auditable {
     private String species;
 
     @Column(nullable = false)
-    private Integer weight;
+    private Double weight;
 
     @Column(length = 1000)
     private String photo;
@@ -53,9 +53,6 @@ public class Pet extends Auditable {
     @ManyToOne
     @JoinColumn(name = "member_id")
     private Member member;
-
-    @OneToMany(mappedBy = "pet", cascade = CascadeType.REMOVE)
-    private List<ReservationPet> reservationPets = new ArrayList<>();
 
     public enum PetType{
         DOG("강아지"),
