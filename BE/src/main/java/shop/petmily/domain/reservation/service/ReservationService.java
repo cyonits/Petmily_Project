@@ -92,6 +92,8 @@ public class ReservationService {
         response.setMember(reservationQueryDsl.findReservationMember(reservation));
         response.setPetsitter(reservationQueryDsl.findReservationPetsitter(reservation));
         response.setPets(reservationQueryDsl.findReservationPets(reservation));
+        response.setReviewId(reservationQueryDsl.findReviewId(reservation));
+        response.setJournalId(reservationQueryDsl.findJournalId(reservation));
 
         return response;
     }
@@ -142,8 +144,8 @@ public class ReservationService {
     //예약 확정 (펫시터)
     public void confirmReservationStatus(Long reservationId, Long id) {
         Reservation reservation = reservationUtils.verificationReservation(reservationId);
-
         Long petsitterId = memberService.findMember(id).getPetsitter().getPetsitterId();
+
         reservationUtils.verificationReservationOwnerPetSitter(petsitterId, reservation);
 
         if (reservation.getProgress() != Progress.RESERVATION_REQUEST) {
@@ -154,14 +156,14 @@ public class ReservationService {
         reservationRepository.save(reservation);
     }
 
-    //예약 취소 (펫시터)
-    public void cancelReservationPetsitter(Long reservationId, Long id) {
+    //예약취소(회원)
+    public void cancelReservationMember(Long reservationId, Long id) {
         Reservation reservation = reservationUtils.verificationReservation(reservationId);
+        Long memberId = memberService.findMember(id).getMemberId();
 
-        Long petsitterId = memberService.findMember(id).getPetsitter().getPetsitterId();
-        reservationUtils.verificationReservationOwnerPetSitter(petsitterId, reservation);
+        reservationUtils.verificationReservationOwnerMember(memberId, reservation);
 
-        if (reservation.getProgress() == Progress.RESERVATION_CONFIRMED) {
+        if (reservation.getProgress() == Progress.RESERVATION_REQUEST) {
             reservation.setProgress(Progress.RESERVATION_CANCELLED);
         } else {
             throw new BusinessLogicException(ExceptionCode.NOT_STATUS_CANCEL);
@@ -170,13 +172,14 @@ public class ReservationService {
         reservationRepository.save(reservation);
     }
 
-    //예약취소(회원)
-    public void cancelReservationMember(Long reservationId, Long id) {
+    //예약 취소 (펫시터)
+    public void cancelReservationPetsitter(Long reservationId, Long id) {
         Reservation reservation = reservationUtils.verificationReservation(reservationId);
+        Long petsitterId = memberService.findMember(id).getPetsitter().getPetsitterId();
 
-        reservationUtils.verificationReservationOwnerMember(id, reservation);
+        reservationUtils.verificationReservationOwnerPetSitter(petsitterId, reservation);
 
-        if (reservation.getProgress() == Progress.RESERVATION_REQUEST) {
+        if (reservation.getProgress() == Progress.RESERVATION_CONFIRMED) {
             reservation.setProgress(Progress.RESERVATION_CANCELLED);
         } else {
             throw new BusinessLogicException(ExceptionCode.NOT_STATUS_CANCEL);
