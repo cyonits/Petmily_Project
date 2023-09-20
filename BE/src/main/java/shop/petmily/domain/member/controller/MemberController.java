@@ -167,6 +167,14 @@ public class MemberController {
         return new ResponseEntity<>(favoritePetsitters, HttpStatus.OK);
     }
 
+    // 해당 펫시터가 찜이 되어있는지 조회
+    @GetMapping("/favoriteTrue")
+    public ResponseEntity<Boolean> getFavoriteBoolean(@LoginMemberId Long memberId,
+                                                      @RequestParam Long petsitterId) {
+        boolean response = favoriteService.findFavoriteBoolean(memberId, petsitterId);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
 //    @ResponseStatus(value = HttpStatus.OK)
 //    @GetMapping("/user")
 //    public ResponseEntity accountUserDetails(@LoginMemberId Long loginMemberId) {
